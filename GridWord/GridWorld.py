@@ -7,6 +7,7 @@ import scipy.misc
 import matplotlib.pyplot as plt
 import os
 import time
+import pygame
 # import PIL 
 
 ##########################################################
@@ -28,7 +29,8 @@ class gameOb() :
         self.channel = channel
         self.reward = reward
         self.name = name
-
+'''
+# to replace with new gameEnv agent with Pygame display
 class gameEnv() : 
     def __init__(self, size) : 
         self.sizeX = size
@@ -39,6 +41,154 @@ class gameEnv() :
         plt.imshow(a, interpolation='nearest')
         plt.show()
 
+    def reset(self) : 
+        self.objects = []
+        hero = gameOb(self.newPosition(), 1,1,2, None, 'hero')
+        self.objects.append(hero)
+        goal_00 = gameOb(self.newPosition(), 1,1,1,1, 'goal')
+        self.objects.append(goal_00)
+        fire_00 = gameOb(self.newPosition(), 1,1,0,-1, 'fire')
+        self.objects.append(fire_00)
+        goal_01 = gameOb(self.newPosition(), 1,1,1,1, 'goal')
+        self.objects.append(goal_01)
+        fire_01 = gameOb(self.newPosition(), 1,1,0,-1, 'fire')
+        self.objects.append(fire_01)
+        goal_02 = gameOb(self.newPosition(), 1,1,1,1, 'goal')
+        self.objects.append(goal_02)
+        goal_03 = gameOb(self.newPosition(), 1,1,1, 1, 'goal')
+        self.objects.append(goal_03)
+        state = self.renderEnv()
+        self.state = state
+        return state
+
+    ##########################################################
+    ###  moveChar function:  to move the char according to direction
+    ###  Direction :  
+    ###     - 0  :  up
+    ###     - 1  :  down
+    ###     - 2  :  left
+    ###     - 3  :  right
+    #########################################################
+    def moveChar(self, direction) : 
+        hero = self.objects[0]
+        heroX = hero.x
+        heroY = hero.y
+        if direction == 0 and hero.y >= 1 : 
+            hero.y -= 1
+        if direction == 1 and hero.y <=self.sizeY-2 : 
+            hero.y += 1
+        if direction == 2 and hero.x >= 1 : 
+            hero.x -= 1
+        if direction == 3 and hero.x <= self.sizeX - 2 : 
+            hero.x += 1
+        self.objects[0]= hero
+
+    ##########################################################
+    ###  newPosition : return a random free space
+    #########################################################
+    def newPosition(self) : 
+        iterables =[range(self.sizeX), range(self.sizeY)]
+        points = []
+        for t in itertools.product(*iterables) : 
+            points.append(t)
+        currentPositions = []
+        for objectA in self.objects : 
+            if (objectA.x, objectA.y) not in currentPositions : 
+                currentPositions.append((objectA.x, objectA.y))
+        for pos in currentPositions : 
+            points.remove(pos)
+        location = np.random.choice(range(len(points)), replace = False)
+        return points[location]
+
+    ##########################################################
+    ###  CheckGoal : to check if 'hero' contact any of the objects
+    #########################################################
+    def checkGoal (self) : 
+        others = []
+        for obj in self.objects : 
+            if obj.name == 'hero' : 
+                hero = obj 
+            else : 
+                others.append(obj)
+        for other in others : 
+            if hero.x == other.x and hero.y == other.y : 
+                self.objects.remove(other)
+                if other.reward == 1 : 
+                    self.objects.append(gameOb(self.newPosition(), 1, 1, 1,1,'goal'))
+                else : 
+                    self.objects.append(gameOb(self.newPosition(), 1, 1, 0,-1,'fire'))
+                return other.reward, False 
+        return 0.0, False 
+
+    def renderEnv(self) : 
+        a = np.ones([self.sizeX +2, self.sizeY+2, 3]) 
+        a[1:-1, 1:-1, :] = 0  # what doesn' this mean ? 
+        hero = None
+        for item in self.objects : 
+            a[item.y+1 : item.y+item.size+1, item.x+1 : item.x + item.size + 1, 
+                item.channel] = item.intensity
+        b = scipy.misc.imresize(a[:,:,0], [84,84,1],interp='nearest')
+        c = scipy.misc.imresize(a[:,:,1], [84,84,1],interp='nearest')
+        d = scipy.misc.imresize(a[:,:,2], [84,84,1],interp='nearest')
+        a = np.stack([b,c,d], axis = 2)
+        return a
+
+    def step(self, action) : 
+        self.moveChar(action)
+        reward, done = self.checkGoal()
+        state = self.renderEnv()
+        return state, reward, done
+''' 
+
+
+class gameEnv() : 
+    def __init__(self, size) : 
+        self.sizeX = size
+        self.sizeY = size
+        self.actions = 4
+        self.windowWdith = 700
+        self.windowHeight = 700
+        self.width_margin = int(self.windowWdith / 7)
+        self.height_margin = int(self.windowHeight / 7)
+        self.block_width = self.width_margin
+        self.block_height = self.height_margin
+        self.bg_color = (128,128,128)
+        self.hero_color = (0,0,255)
+        self.fire_color = (255,0,0)
+        self.goal_color = (0,255,0)
+        pygame.init()
+        self.screen = pygame.display.set_mode((self.windowWdith,self.windowHeight))
+        pygame.display.set_caption("Grid World display - programming running")
+        self.screen.fill(self.bg_color)
+        self.objects = []
+        a = self.reset()
+        self.drawEnv()
+        # plt.imshow(a, interpolation='nearest')
+        # plt.show()
+
+    def drawEnv(self) : 
+
+        pygame.draw.rect(self.screen, (0,0,0),  (self.width_margin,self.height_margin,
+                        self.windowWdith-2*self.width_margin, 
+                        self.windowHeight-2*self.height_margin))
+        for item in self.objects : 
+            if item.name == 'hero' : 
+                pygame.draw.rect(self.screen, self.hero_color,  
+                        (self.width_margin + item.x * self.block_width,
+                        self.height_margin + item.y * self.block_height,
+                        self.block_width,self.block_height))
+            if item.name == 'goal' : 
+                pygame.draw.rect(self.screen, self.goal_color,  
+                        (self.width_margin + item.x * self.block_width,
+                        self.height_margin + item.y * self.block_height,
+                        self.block_width,self.block_height))
+            if item.name == 'fire' : 
+                pygame.draw.rect(self.screen, self.fire_color,  
+                        (self.width_margin + item.x * self.block_width,
+                        self.height_margin + item.y * self.block_height,
+                        self.block_width,self.block_height))
+        pygame.display.update()
+    
     def reset(self) : 
         self.objects = []
         hero = gameOb(self.newPosition(), 1,1,2, None, 'hero')
@@ -250,13 +400,18 @@ with tf.Session() as sess :
         saver.restore(sess, ckpt.model_checkpoint_path)
     sess.run(init)
     updateTarget(targetOps, sess)
+    total_time = time.time()
+    time_25_episodes = time.time()
     for i in range(num_espisodes + 1) : 
         episodeBuffer = experience_buffer()
         s = env.reset()
+        env.drawEnv()
         s = processState(s)
         d = False
         rAll = 0
         j = 0
+
+
 
         while j < max_epLength : 
             j += 1
@@ -265,6 +420,7 @@ with tf.Session() as sess :
             else : 
                 a = sess.run(mainQN.predict, feed_dict={mainQN.scalarInput:[s]})[0]
             s1, r, d = env.step(a)
+            # env.drawEnv()
             s1 = processState(s1)
             total_steps += 1
             episodeBuffer.add(np.reshape(np.array([s,a,r,s1,d]),[1,5]))
@@ -294,8 +450,24 @@ with tf.Session() as sess :
         myBuffer.add(episodeBuffer.buffer)
         rList.append(rAll)
         if i>0 and i%25 == 0: 
-            print('episode  ', i, '  , average reward of last 25 episides', 
-                np.mean(rList[-25:]))
+            # to calculate the total time used
+            total_time_used = time.time() - total_time
+            total_time_hr = int(total_time_used // 3600)
+            total_time_minutes = int((total_time_used % 3600)/60)
+            total_time_seconds = total_time_used - total_time_hr * 3600 - total_time_minutes*60
+
+            # to calculate the 25 episodes time used
+            total_time_25_used = time.time() - time_25_episodes
+            time_25_minutes = total_time_25_used // 60
+            time_25_seconds = int(total_time_25_used % 60)
+            time_25_episodes = time.time()
+            print('episode ', i, 
+                    ', avg reward of last 25 episides', np.mean(rList[-25:]),
+                    ', * 25 episosdes time used ', time_25_minutes,' Min ',
+                    time_25_seconds, ' Sec', 
+                    ' * total time used', total_time_hr, ' Hr', 
+                    total_time_minutes, ' Min',
+                    int(total_time_seconds),' Sec')
             if i > 0 and i%1000 == 0 : 
                 saver.save(sess, path + '/model -' + str(i) + '.cptk')
                 print("Saved Model")
