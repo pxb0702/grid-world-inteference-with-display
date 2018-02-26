@@ -37,8 +37,8 @@ class gameEnv() :
         self.actions = 4
         self.windowWdith = 700
         self.windowHeight = 700
-        self.width_margin = int(self.windowWdith / 7)
-        self.height_margin = int(self.windowHeight / 7)
+        self.width_margin = self.windowWdith // 7
+        self.height_margin = self.windowHeight //7
         self.block_width = self.width_margin
         self.block_height = self.height_margin
         self.bg_color = (128,128,128)
@@ -208,7 +208,7 @@ class Qnetwork() :
         self.Value = tf.matmul(self.streamC, self.VW)
 
         self.Qout = self.Value + tf.subtract(self.Advantage, tf.reduce_mean(
-                    self.Advantage, reduction_indices=1, keep_dims=True ))
+                    self.Advantage, reduction_indices=1, keepdims=True ))
         self.predict = tf.argmax(self.Qout, 1)
 
         self.targetQ = tf.placeholder(shape = [None], dtype = tf.float32)
@@ -260,7 +260,7 @@ num_espisodes = 100
 pre_train_steps = 10000
 max_epLength = 50
 load_model = True
-path = './dqn_saved_Feb_13'
+path = './dqn_saved_Feb_26'
 h_size = 512
 tau = 0.001
 
@@ -322,7 +322,7 @@ with tf.Session() as sess :
             env.drawEnv()
             s1 = processState(s1)
             total_steps += 1
-            time.sleep(0.2)
+            time.sleep(0.5)
 #            episodeBuffer.add(np.reshape(np.array([s,a,r,s1,d]),[1,5]))
 #            if total_steps > pre_train_steps : 
 #                if e > endE : 
